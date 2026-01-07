@@ -128,6 +128,7 @@ screen /dev/tty.usbmodem1234 115200
 - Provides Modbus TCP and RTU client functionality
 - Install via: `import mip; mip.install('github:brainelectronics/micropython-modbus')`
 - Must be installed on the Pico W (requires internet connection during setup)
+- Import statement: `from umodbus.tcp import TCP as ModbusTCPMaster`
 
 **VS Code Extensions** (recommended):
 - **Pico-W-Go**: MicroPython support for Pico W (upload, run, REPL)
@@ -181,8 +182,10 @@ The `wifi_manager.py` module handles:
 - Network diagnostics and scanning
 
 **Cerbo GX Hotspot Details**:
-- When Cerbo GX runs as a WiFi hotspot, it assigns itself IP `192.168.2.1`
-- DHCP assigns client IPs in the `192.168.2.x` range
+- When Cerbo GX runs as a WiFi hotspot, it assigns itself an IP (typically gateway IP)
+- Common IP ranges: `172.24.24.x` or `192.168.2.x` (varies by Cerbo GX configuration)
+- **Important:** Check the "Gateway" IP shown in WiFi connection output - that's your Cerbo GX IP
+- DHCP assigns client IPs in the same subnet
 - Hotspot SSID format: `venus-<serial>-<suffix>`
 
 ### Common Pitfalls
@@ -196,13 +199,17 @@ The `wifi_manager.py` module handles:
 ## Configuration
 
 Edit `config.py` for environment-specific settings:
-- `CERBO_IP`: Victron Cerbo GX IP address (192.168.2.1 when using hotspot)
+- `CERBO_IP`: Victron Cerbo GX IP address (check Gateway IP from WiFi connection output)
 - `CERBO_PORT`: Modbus TCP port (default: 502)
 - `WIFI_SSID`: Cerbo GX hotspot network name
 - `WIFI_PASSWORD`: Cerbo GX hotspot WiFi key
 - `WIFI_TIMEOUT`: WiFi connection timeout in seconds
 - `POLL_INTERVAL`: How often to read data (seconds)
 - `REGISTERS`: Modbus register addresses to read
+
+**Finding Your Cerbo GX IP:**
+When the Pico W connects to WiFi, it displays network info including the Gateway IP.
+The Gateway IP is your Cerbo GX IP address - update `CERBO_IP` in config.py to match this.
 
 For local development overrides, create `config_local.py` (gitignored).
 
@@ -246,7 +253,7 @@ To read additional Victron data:
 - **WiFi hotspot must be enabled** on the Cerbo GX for this setup
 - **Dependencies must be installed** on the Pico W via `mip` (requires temporary internet)
 - The Pico W connects directly to the Cerbo GX hotspot (no router needed)
-- Cerbo GX IP is `192.168.2.1` when operating as a hotspot
+- **Cerbo GX IP varies** - check the Gateway IP from WiFi connection output and update `config.py`
 - Victron register addresses are documented in their Modbus TCP FAQ and Excel spreadsheet
 - Register values often need scaling - the `VictronClient` class handles this automatically
 - The Cerbo GX Modbus unit ID is typically 100 for system data (configurable in VictronClient)
@@ -262,3 +269,23 @@ if DEBUG:
 ```
 
 Monitor via serial connection to see print() output in real-time.
+
+## Troubleshooting
+
+### Connection Issues
+
+**Problem:** `[Errno 103] ECONNABORTED` when connecting to Cerbo GX
+
+**Solutions:**
+1. Check Modbus TCP is enabled on Cerbo GX (Settings → Services)
+2. Verify `CERBO_IP` in config.py matches the Gateway IP shown in WiFi connection output
+3. Ensure you're connected to the Cerbo GX hotspot (not another WiFi network)
+4. The Pico W may be connected to a previous WiFi - `main.py` now disconnects first
+
+**Problem:** `ImportError: can't import name ModbusTCPMaster`
+
+**Solution:** The correct import is `from umodbus.tcp import TCP as ModbusTCPMaster`
+
+**Problem:** Already connected to wrong WiFi network
+
+**Solution:** The app now calls `wifi.disconnect()` before connecting to Cerbo GX hotspot
