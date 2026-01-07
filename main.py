@@ -8,6 +8,7 @@ import sys
 import config
 from wifi_manager import WiFiManager
 from victron_client import VictronClient
+from uart_manager import UARTManager
 
 def main():
     """Main application loop"""
@@ -42,6 +43,23 @@ def main():
         wifi.disconnect()
         return
 
+    # Initialize UART for display communication
+    uart_mgr = None
+    if config.UART_ENABLED:
+        print(f"\n[3/3] Initializing UART on GP{config.UART_TX_PIN} (TX)")
+        try:
+            uart_mgr = UARTManager(
+                uart_id=config.UART_ID,
+                baudrate=config.UART_BAUDRATE,
+                tx_pin=config.UART_TX_PIN,
+                rx_pin=config.UART_RX_PIN
+            )
+            print("UART initialized successfully")
+        except Exception as e:
+            print(f"WARNING: UART initialization failed: {e}")
+            print("Continuing without UART output...")
+            uart_mgr = None
+
     # Main polling loop
     print(f"\nStarting data polling (interval: {config.POLL_INTERVAL}s)")
     print("Press Ctrl+C to stop\n")
@@ -75,6 +93,10 @@ def main():
                 print(f"  Battery Current: {abs(current):.1f} A ({direction})")
             if data['battery_soc'] is not None:
                 print(f"  Battery SOC:     {data['battery_soc']}%")
+                # Send to display via UART
+                if uart_mgr:
+                    if not uart_mgr.send_battery_soc(data['battery_soc']):
+                        print("  WARNING: Failed to send SOC via UART")
             if data['solar_power'] is not None:
                 print(f"  Solar Power:     {data['solar_power']} W")
 
@@ -83,6 +105,8 @@ def main():
         except KeyboardInterrupt:
             print("\n\nShutting down...")
             victron.close()
+            if uart_mgr:
+                uart_mgr.close()
             wifi.disconnect()
             break
         except Exception as e:

@@ -10,7 +10,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Network Setup**: Connects to Cerbo GX WiFi hotspot (venus-HQ2449Y9R23-b05)
 
-**Communication Protocol**: Modbus TCP (default port 502)
+**Communication Protocols**:
+- Modbus TCP (WiFi) for reading Cerbo GX data
+- UART (serial) for sending data to external display
 
 ## Development Workflow
 
@@ -61,6 +63,7 @@ mpremote fs cp boot.py :boot.py
 mpremote fs cp config.py :config.py
 mpremote fs cp wifi_manager.py :wifi_manager.py
 mpremote fs cp victron_client.py :victron_client.py
+mpremote fs cp uart_manager.py :uart_manager.py
 
 # Install dependencies on Pico (requires internet connection)
 mpremote exec "import mip; mip.install('github:brainelectronics/micropython-modbus')"
@@ -116,6 +119,9 @@ screen /dev/tty.usbmodem1234 115200
 ├── config.py             # Configuration (IP, ports, registers, WiFi credentials)
 ├── wifi_manager.py       # WiFi connection handler for Pico W
 ├── victron_client.py     # Victron Modbus TCP client wrapper
+├── uart_manager.py       # UART communication for display output
+├── battery_monitor.py    # Display module (for Waveshare RP2350B)
+├── DISPLAY_INTEGRATION.md  # Display integration instructions
 ├── deploy.sh             # Automated deployment script (mpremote)
 ├── .gitignore            # Git ignore patterns
 └── README.md             # Project documentation
@@ -211,6 +217,14 @@ Edit `config.py` for environment-specific settings:
 When the Pico W connects to WiFi, it displays network info including the Gateway IP.
 The Gateway IP is your Cerbo GX IP address - update `CERBO_IP` in config.py to match this.
 
+**UART Configuration:**
+- `UART_ENABLED`: Enable/disable UART transmission (default: True)
+- `UART_ID`: UART peripheral 0 or 1 (default: 0)
+- `UART_BAUDRATE`: Communication speed (default: 115200)
+- `UART_TX_PIN`: GPIO pin for TX (default: 0 = GP0)
+- `UART_RX_PIN`: GPIO pin for RX (default: 1 = GP1, unused)
+- `UART_DEBUG`: Print UART messages to console (default: False)
+
 For local development overrides, create `config_local.py` (gitignored).
 
 **Security Note**: The WiFi credentials are stored in plaintext in `config.py`. For production use, consider alternative credential storage methods.
@@ -246,6 +260,97 @@ To read additional Victron data:
 2. Determine if it's a holding register (function 3) or input register (function 4)
 3. Add method to `VictronClient` with appropriate scaling
 4. Update `read_all_data()` if needed
+
+## UART Communication
+
+The project includes UART support for sending battery SOC data to an external display (e.g., Waveshare RP2350B).
+
+### UART Manager API
+
+The `UARTManager` class in `uart_manager.py` provides one-way UART transmission:
+
+```python
+from uart_manager import UARTManager
+
+# Initialize UART
+uart_mgr = UARTManager(
+    uart_id=0,        # UART peripheral (0 or 1)
+    baudrate=115200,  # Communication speed
+    tx_pin=0,         # GP0 for TX
+    rx_pin=1          # GP1 for RX (unused but required)
+)
+
+# Send battery SOC (0-100)
+success = uart_mgr.send_battery_soc(85)  # Returns True/False
+
+# Get transmission statistics
+stats = uart_mgr.get_stats()
+# Returns: {'send_count': N, 'error_count': N, 'error_rate': 0.0}
+
+# Cleanup
+uart_mgr.close()
+```
+
+### UART Protocol
+
+**Message Format**: `BATTERY:<soc>\n`
+
+Examples:
+- `BATTERY:85\n` - Battery at 85%
+- `BATTERY:0\n` - Battery empty
+- `BATTERY:100\n` - Battery full
+
+**Specifications**:
+- Baud Rate: 115200
+- Data Format: 8N1 (8 data bits, no parity, 1 stop bit)
+- Encoding: UTF-8
+- Line Terminator: `\n` (line feed)
+- Direction: One-way (Pico W TX → Display RX)
+- Update Frequency: Every 5 seconds (matches Modbus poll interval)
+
+### Hardware Connection
+
+| Pico W | Pin | GPIO | Signal | → | Display | GPIO | Pin |
+|--------|-----|------|--------|---|---------|------|-----|
+| Pin 1  | GP0 | TX   | UART0  | → | GP17    | RX   | Pin 22 |
+| Pin 3  | GND | -    | Ground | → | GND     | -    | Pin 23 |
+
+**Critical**:
+- Connect TX to RX (not TX to TX)
+- Common ground is essential for UART communication
+- Both devices use 3.3V logic levels (compatible)
+
+### Display Integration
+
+For display-side implementation:
+
+1. **Copy Files**: Transfer `battery_monitor.py` to your Waveshare display project
+2. **Integration Guide**: See `DISPLAY_INTEGRATION.md` for detailed instructions
+3. **Display Module**: Based on `jtj.py` template from HA-Waveshare-Display repository
+
+The display module provides:
+- Circular gauge visualization (0-100%)
+- Image background support
+- Staleness detection (15-second timeout)
+- Automatic rendering on data update
+
+### Error Handling
+
+**UART Initialization Failure**:
+- System continues operation without UART
+- Error message printed to console
+- Non-fatal (Modbus data collection unaffected)
+
+**UART Send Failure**:
+- Warning message printed
+- Transmission statistics updated
+- Retries on next poll cycle
+- No impact on main functionality
+
+**Data Validation**:
+- `None` values are skipped (not transmitted)
+- SOC clamped to 0-100 range
+- Invalid values rejected with error log
 
 ## Important Notes
 

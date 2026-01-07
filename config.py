@@ -26,3 +26,11 @@ REGISTERS = {
     "battery_current": 841,
     "battery_soc": 843,
 }
+
+# UART settings for display communication
+UART_ENABLED = True          # Master enable/disable switch
+UART_ID = 0                  # UART peripheral (0 or 1)
+UART_BAUDRATE = 115200       # Must match display setting
+UART_TX_PIN = 0              # GP0 (Pin 1)
+UART_RX_PIN = 1              # GP1 (Pin 2) - unused but required
+UART_DEBUG = False           # Print UART messages to console

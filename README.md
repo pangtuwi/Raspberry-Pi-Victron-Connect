@@ -42,6 +42,7 @@ Files to deploy:
 - `config.py`
 - `wifi_manager.py`
 - `victron_client.py`
+- `uart_manager.py`
 
 ### 4. Configure
 
@@ -82,8 +83,29 @@ Once deployed and configured, the Pico W will:
 2. Establish Modbus TCP connection
 3. Poll data every 5 seconds (configurable)
 4. Display: Battery voltage, current, SOC, and solar power
+5. Send Battery SOC via UART to external display (if enabled)
 
 Monitor output via serial connection (115200 baud).
+
+### UART Display Output
+
+The Pico W can send battery SOC data to an external display via UART:
+
+**Hardware Connection:**
+- Pico W GP0 (Pin 1) → Display RX
+- Pico W GND (Pin 3) → Display GND
+
+**Protocol:**
+- Format: `BATTERY:<soc>\n` (e.g., `BATTERY:85\n`)
+- Baud Rate: 115200
+- Update Frequency: Every 5 seconds
+
+**Configuration:**
+- Enable/disable in `config.py`: `UART_ENABLED = True`
+- Pin configuration: `UART_TX_PIN = 0` (GP0)
+- Debug mode: `UART_DEBUG = True` (prints UART messages to console)
+
+See `battery_monitor.py` and `DISPLAY_INTEGRATION.md` for display-side implementation details.
 
 ## Data Retrieved
 
