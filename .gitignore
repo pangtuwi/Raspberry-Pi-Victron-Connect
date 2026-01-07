@@ -1,0 +1,20 @@
+# MicroPython
+*.pyc
+__pycache__/
+
+# Environment-specific config (create config_local.py for local overrides)
+config_local.py
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+.vscode/settings.json.user
+.micropico
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
