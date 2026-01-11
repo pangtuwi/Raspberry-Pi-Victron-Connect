@@ -174,6 +174,95 @@ class UARTManager:
             self.error_count += 1
             return False
 
+    def send_wifi_status(self, status):
+        """
+        Send WiFi status via UART
+
+        Args:
+            status: WiFi status - 0=disconnected, 1=connected, 2=skipped (int or None)
+
+        Returns:
+            True if sent successfully, False otherwise
+        """
+        # Validate input
+        if status is None:
+            if hasattr(config, 'UART_DEBUG') and config.UART_DEBUG:
+                print("UART: Skipping WIFI send (status is None)")
+            return False
+
+        # Ensure status is 0, 1, or 2
+        status_value = int(status)
+        if status_value not in [0, 1, 2]:
+            print(f"UART: Invalid WiFi status {status_value}, must be 0, 1, or 2")
+            return False
+
+        # Format message: WIFI:<status>\n
+        message = f"WIFI:{status_value}\n"
+
+        try:
+            # Send via UART
+            bytes_written = self.uart.write(message.encode('utf-8'))
+
+            if bytes_written != len(message):
+                print(f"UART: Incomplete write ({bytes_written}/{len(message)} bytes)")
+                self.error_count += 1
+                return False
+
+            self.send_count += 1
+
+            if hasattr(config, 'UART_DEBUG') and config.UART_DEBUG:
+                print(f"UART TX: {message.strip()} ({bytes_written} bytes)")
+
+            return True
+
+        except Exception as e:
+            print(f"UART send error: {e}")
+            self.error_count += 1
+            return False
+
+    def send_demo_mode(self, is_demo):
+        """
+        Send demo mode status via UART
+
+        Args:
+            is_demo: Demo mode state - 0=normal mode, 1=demo mode (int or bool or None)
+
+        Returns:
+            True if sent successfully, False otherwise
+        """
+        # Validate input
+        if is_demo is None:
+            if hasattr(config, 'UART_DEBUG') and config.UART_DEBUG:
+                print("UART: Skipping DEMO send (is_demo is None)")
+            return False
+
+        # Ensure state is 0 or 1
+        demo_value = 1 if is_demo else 0
+
+        # Format message: DEMO:<state>\n
+        message = f"DEMO:{demo_value}\n"
+
+        try:
+            # Send via UART
+            bytes_written = self.uart.write(message.encode('utf-8'))
+
+            if bytes_written != len(message):
+                print(f"UART: Incomplete write ({bytes_written}/{len(message)} bytes)")
+                self.error_count += 1
+                return False
+
+            self.send_count += 1
+
+            if hasattr(config, 'UART_DEBUG') and config.UART_DEBUG:
+                print(f"UART TX: {message.strip()} ({bytes_written} bytes)")
+
+            return True
+
+        except Exception as e:
+            print(f"UART send error: {e}")
+            self.error_count += 1
+            return False
+
     def get_stats(self):
         """
         Get transmission statistics

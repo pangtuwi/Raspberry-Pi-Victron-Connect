@@ -89,7 +89,7 @@ Monitor output via serial connection (115200 baud).
 
 ### UART Display Output
 
-The Pico W can send battery data to an external display via UART. Three message types are transmitted each poll cycle:
+The Pico W can send battery data to an external display via UART. Five message types are transmitted:
 
 **Hardware Connection:**
 - Pico W GP0 (Pin 1) → Display RX
@@ -110,10 +110,19 @@ The Pico W can send battery data to an external display via UART. Three message 
    - Format: `CHARGING:<state>\n`
    - Example: `CHARGING:1\n` (0=not charging, 1=charging)
 
+4. **WiFi Status**
+   - Format: `WIFI:<status>\n`
+   - Example: `WIFI:1\n` (0=disconnected, 1=connected, 2=skipped/demo)
+
+5. **Demo Mode Status**
+   - Format: `DEMO:<state>\n`
+   - Example: `DEMO:0\n` (0=normal mode, 1=demo mode)
+   - Sent once at startup
+
 **Specifications:**
 - Baud Rate: 115200
 - Update Frequency: Every 5 seconds
-- All three messages sent sequentially
+- Messages 1-4 sent each poll cycle, message 5 sent once at startup
 
 **Configuration:**
 - Enable/disable in `config.py`: `UART_ENABLED = True`

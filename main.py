@@ -103,6 +103,12 @@ def main():
             print("Continuing without UART output...")
             uart_mgr = None
 
+    # Send initial status via UART
+    if uart_mgr:
+        # Send demo mode status
+        if not uart_mgr.send_demo_mode(demo_mode):
+            print("  WARNING: Failed to send DEMO mode via UART")
+
     # Main polling loop
     mode_text = "DEMO MODE" if demo_mode else f"interval: {config.POLL_INTERVAL}s"
     print(f"\nStarting data polling ({mode_text})")
@@ -169,6 +175,17 @@ def main():
                 if data['charging_state'] is not None:
                     if not uart_mgr.send_charging_state(data['charging_state']):
                         print("  WARNING: Failed to send CHARGING via UART")
+
+                # Send WiFi status
+                if demo_mode:
+                    wifi_status = 2  # Skipped (demo mode)
+                elif wifi and wifi.is_connected():
+                    wifi_status = 1  # Connected
+                else:
+                    wifi_status = 0  # Disconnected
+
+                if not uart_mgr.send_wifi_status(wifi_status):
+                    print("  WARNING: Failed to send WIFI status via UART")
 
             time.sleep(config.POLL_INTERVAL)
 

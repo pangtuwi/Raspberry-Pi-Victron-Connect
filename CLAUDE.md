@@ -300,6 +300,12 @@ success = uart_mgr.send_battery_system(48.5, 12.3, 25.5)  # Returns True/False
 # Send charging state (0=not charging, 1=charging)
 success = uart_mgr.send_charging_state(1)  # Returns True/False
 
+# Send WiFi status (0=disconnected, 1=connected, 2=skipped)
+success = uart_mgr.send_wifi_status(1)  # Returns True/False
+
+# Send demo mode status (0=normal, 1=demo)
+success = uart_mgr.send_demo_mode(0)  # Returns True/False
+
 # Get transmission statistics
 stats = uart_mgr.get_stats()
 # Returns: {'send_count': N, 'error_count': N, 'error_rate': 0.0}
@@ -310,7 +316,7 @@ uart_mgr.close()
 
 ### UART Protocol
 
-The system transmits three types of messages via UART:
+The system transmits five types of messages via UART:
 
 **1. Battery State of Charge**
 - Format: `BATTERY:<soc>\n`
@@ -329,6 +335,17 @@ The system transmits three types of messages via UART:
 - `state`: 0=not charging, 1=charging
 - Example: `CHARGING:1\n`
 
+**4. WiFi Status**
+- Format: `WIFI:<status>\n`
+- `status`: 0=disconnected, 1=connected, 2=skipped (demo mode)
+- Example: `WIFI:1\n`
+
+**5. Demo Mode Status**
+- Format: `DEMO:<state>\n`
+- `state`: 0=normal mode, 1=demo mode
+- Example: `DEMO:0\n`
+- Sent once at startup after UART initialization
+
 **Specifications**:
 - Baud Rate: 115200
 - Data Format: 8N1 (8 data bits, no parity, 1 stop bit)
@@ -336,7 +353,7 @@ The system transmits three types of messages via UART:
 - Line Terminator: `\n` (line feed)
 - Direction: One-way (Pico W TX → Display RX)
 - Update Frequency: Every 5 seconds (matches Modbus poll interval)
-- All three messages sent sequentially each poll cycle
+- All messages sent sequentially each poll cycle (except DEMO which is sent once at startup)
 
 ### Hardware Connection
 
