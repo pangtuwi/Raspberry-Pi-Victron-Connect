@@ -103,17 +103,15 @@ def main():
             print("Continuing without UART output...")
             uart_mgr = None
 
-    # Send initial status via UART
-    if uart_mgr:
-        # Send demo mode status
-        if not uart_mgr.send_demo_mode(demo_mode):
-            print("  WARNING: Failed to send DEMO mode via UART")
-
     # Main polling loop
     mode_text = "DEMO MODE" if demo_mode else f"interval: {config.POLL_INTERVAL}s"
     print(f"\nStarting data polling ({mode_text})")
+    print("UART: Cycling through 5 messages, 1 message per second")
     print("Press Ctrl+C to stop\n")
     print("-" * 60)
+
+    # UART message cycle counter (0-4 for 5 messages)
+    uart_message_cycle = 0
 
     while True:
         try:
@@ -153,41 +151,53 @@ def main():
             if data['solar_power'] is not None:
                 print(f"  Solar Power:     {data['solar_power']} W")
 
-            # Send to display via UART
+            # Send one UART message per cycle (cycling through 5 messages)
             if uart_mgr:
-                # Send battery SOC
-                if data['battery_soc'] is not None:
-                    if not uart_mgr.send_battery_soc(data['battery_soc']):
-                        print("  WARNING: Failed to send SOC via UART")
+                if uart_message_cycle == 0:
+                    # Message 1: Battery SOC
+                    if data['battery_soc'] is not None:
+                        if not uart_mgr.send_battery_soc(data['battery_soc']):
+                            print("  WARNING: Failed to send SOC via UART")
 
-                # Send battery system data
-                if (data['battery_voltage'] is not None and
-                    data['battery_current'] is not None and
-                    data['battery_temperature'] is not None):
-                    if not uart_mgr.send_battery_system(
-                        data['battery_voltage'],
-                        data['battery_current'],
-                        data['battery_temperature']
-                    ):
-                        print("  WARNING: Failed to send BATSYS via UART")
+                elif uart_message_cycle == 1:
+                    # Message 2: Battery system data
+                    if (data['battery_voltage'] is not None and
+                        data['battery_current'] is not None and
+                        data['battery_temperature'] is not None):
+                        if not uart_mgr.send_battery_system(
+                            data['battery_voltage'],
+                            data['battery_current'],
+                            data['battery_temperature']
+                        ):
+                            print("  WARNING: Failed to send BATSYS via UART")
 
-                # Send charging state
-                if data['charging_state'] is not None:
-                    if not uart_mgr.send_charging_state(data['charging_state']):
-                        print("  WARNING: Failed to send CHARGING via UART")
+                elif uart_message_cycle == 2:
+                    # Message 3: Charging state
+                    if data['charging_state'] is not None:
+                        if not uart_mgr.send_charging_state(data['charging_state']):
+                            print("  WARNING: Failed to send CHARGING via UART")
 
-                # Send WiFi status
-                if demo_mode:
-                    wifi_status = 2  # Skipped (demo mode)
-                elif wifi and wifi.is_connected():
-                    wifi_status = 1  # Connected
-                else:
-                    wifi_status = 0  # Disconnected
+                elif uart_message_cycle == 3:
+                    # Message 4: WiFi status
+                    if demo_mode:
+                        wifi_status = 2  # Skipped (demo mode)
+                    elif wifi and wifi.is_connected():
+                        wifi_status = 1  # Connected
+                    else:
+                        wifi_status = 0  # Disconnected
 
-                if not uart_mgr.send_wifi_status(wifi_status):
-                    print("  WARNING: Failed to send WIFI status via UART")
+                    if not uart_mgr.send_wifi_status(wifi_status):
+                        print("  WARNING: Failed to send WIFI status via UART")
 
-            time.sleep(config.POLL_INTERVAL)
+                elif uart_message_cycle == 4:
+                    # Message 5: Demo mode status
+                    if not uart_mgr.send_demo_mode(demo_mode):
+                        print("  WARNING: Failed to send DEMO mode via UART")
+
+                # Increment cycle counter (wrap at 5)
+                uart_message_cycle = (uart_message_cycle + 1) % 5
+
+            time.sleep(1)  # 1 second between messages
 
         except KeyboardInterrupt:
             print("\n\nShutting down...")

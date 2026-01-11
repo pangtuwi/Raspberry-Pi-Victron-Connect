@@ -117,12 +117,12 @@ The Pico W can send battery data to an external display via UART. Five message t
 5. **Demo Mode Status**
    - Format: `DEMO:<state>\n`
    - Example: `DEMO:0\n` (0=normal mode, 1=demo mode)
-   - Sent once at startup
 
 **Specifications:**
 - Baud Rate: 115200
-- Update Frequency: Every 5 seconds
-- Messages 1-4 sent each poll cycle, message 5 sent once at startup
+- Transmission Pattern: Cycling through 5 messages, 1 message per second
+- Each message sent once every 5 seconds
+- Cycle order: BATTERY → BATSYS → CHARGING → WIFI → DEMO (repeat)
 
 **Configuration:**
 - Enable/disable in `config.py`: `UART_ENABLED = True`

@@ -344,7 +344,6 @@ The system transmits five types of messages via UART:
 - Format: `DEMO:<state>\n`
 - `state`: 0=normal mode, 1=demo mode
 - Example: `DEMO:0\n`
-- Sent once at startup after UART initialization
 
 **Specifications**:
 - Baud Rate: 115200
@@ -352,8 +351,19 @@ The system transmits five types of messages via UART:
 - Encoding: UTF-8
 - Line Terminator: `\n` (line feed)
 - Direction: One-way (Pico W TX → Display RX)
-- Update Frequency: Every 5 seconds (matches Modbus poll interval)
-- All messages sent sequentially each poll cycle (except DEMO which is sent once at startup)
+
+**Transmission Pattern**:
+- Messages sent in a 5-second cycle, one message per second
+- Cycle order: BATTERY → BATSYS → CHARGING → WIFI → DEMO (repeat)
+- Each message transmitted once every 5 seconds
+- 1 second interval between messages
+- Example timing:
+  - Second 0: `BATTERY:75\n`
+  - Second 1: `BATSYS:48.5,12.3,25.5\n`
+  - Second 2: `CHARGING:1\n`
+  - Second 3: `WIFI:1\n`
+  - Second 4: `DEMO:0\n`
+  - Second 5: `BATTERY:76\n` (cycle repeats)
 
 ### Hardware Connection
 
