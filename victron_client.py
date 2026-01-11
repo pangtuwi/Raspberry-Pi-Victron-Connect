@@ -104,7 +104,7 @@ class VictronClient:
         result = self.read_input_register(840)
         if result:
             # Victron stores voltage in 0.01V units
-            return result[0] * 0.01
+            return result[0] * 0.1
         return None
 
     def read_battery_current(self):
@@ -137,6 +137,22 @@ class VictronClient:
             return result[0]
         return None
 
+    def read_battery_temperature(self):
+        """
+        Read battery temperature (register 842)
+
+        Returns:
+            Temperature in Celsius (float) or None on error
+        """
+        result = self.read_input_register(842)
+        if result:
+            # Victron stores temperature in 0.01 Kelvin units
+            # Convert to Celsius: (K * 0.01) - 273.15
+            kelvin = result[0] * 0.01
+            celsius = kelvin - 273.15
+            return round(celsius, 1)
+        return None
+
     def read_solar_power(self):
         """
         Read solar power (register 850)
@@ -150,6 +166,25 @@ class VictronClient:
             return result[0]
         return None
 
+    def get_charging_state(self, current=None):
+        """
+        Determine if battery is charging based on current
+
+        Args:
+            current: Battery current in amps (if None, will read from register)
+
+        Returns:
+            1 if charging (current > 0), 0 if not charging, None on error
+        """
+        if current is None:
+            current = self.read_battery_current()
+
+        if current is None:
+            return None
+
+        # Positive current = charging, negative/zero = not charging
+        return 1 if current > 0 else 0
+
     def read_all_data(self):
         """
         Read all common Victron registers
@@ -157,11 +192,15 @@ class VictronClient:
         Returns:
             Dictionary with all data or None on error
         """
+        battery_current = self.read_battery_current()
+
         data = {
             'battery_voltage': self.read_battery_voltage(),
-            'battery_current': self.read_battery_current(),
+            'battery_current': battery_current,
+            'battery_temperature': self.read_battery_temperature(),
             'battery_soc': self.read_battery_soc(),
             'solar_power': self.read_solar_power(),
+            'charging_state': self.get_charging_state(battery_current),
         }
         return data
 

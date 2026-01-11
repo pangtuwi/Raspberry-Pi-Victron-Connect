@@ -89,6 +89,91 @@ class UARTManager:
             self.error_count += 1
             return False
 
+    def send_battery_system(self, voltage, current, temperature):
+        """
+        Send battery system data via UART
+
+        Args:
+            voltage: Battery voltage in volts (float or None)
+            current: Battery current in amps (float or None)
+            temperature: Battery temperature in Celsius (float or None)
+
+        Returns:
+            True if sent successfully, False otherwise
+        """
+        # Validate inputs
+        if voltage is None or current is None or temperature is None:
+            if hasattr(config, 'UART_DEBUG') and config.UART_DEBUG:
+                print("UART: Skipping BATSYS send (one or more values is None)")
+            return False
+
+        # Format message: BATSYS:<voltage>,<current>,<temp>\n
+        message = f"BATSYS:{voltage:.1f},{current:.1f},{temperature:.1f}\n"
+
+        try:
+            # Send via UART
+            bytes_written = self.uart.write(message.encode('utf-8'))
+
+            if bytes_written != len(message):
+                print(f"UART: Incomplete write ({bytes_written}/{len(message)} bytes)")
+                self.error_count += 1
+                return False
+
+            self.send_count += 1
+
+            if hasattr(config, 'UART_DEBUG') and config.UART_DEBUG:
+                print(f"UART TX: {message.strip()} ({bytes_written} bytes)")
+
+            return True
+
+        except Exception as e:
+            print(f"UART send error: {e}")
+            self.error_count += 1
+            return False
+
+    def send_charging_state(self, state):
+        """
+        Send charging state via UART
+
+        Args:
+            state: Charging state - 0=not charging, 1=charging (int or None)
+
+        Returns:
+            True if sent successfully, False otherwise
+        """
+        # Validate input
+        if state is None:
+            if hasattr(config, 'UART_DEBUG') and config.UART_DEBUG:
+                print("UART: Skipping CHARGING send (state is None)")
+            return False
+
+        # Ensure state is 0 or 1
+        state_value = 1 if state else 0
+
+        # Format message: CHARGING:<state>\n
+        message = f"CHARGING:{state_value}\n"
+
+        try:
+            # Send via UART
+            bytes_written = self.uart.write(message.encode('utf-8'))
+
+            if bytes_written != len(message):
+                print(f"UART: Incomplete write ({bytes_written}/{len(message)} bytes)")
+                self.error_count += 1
+                return False
+
+            self.send_count += 1
+
+            if hasattr(config, 'UART_DEBUG') and config.UART_DEBUG:
+                print(f"UART TX: {message.strip()} ({bytes_written} bytes)")
+
+            return True
+
+        except Exception as e:
+            print(f"UART send error: {e}")
+            self.error_count += 1
+            return False
+
     def get_stats(self):
         """
         Get transmission statistics

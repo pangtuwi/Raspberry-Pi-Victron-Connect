@@ -86,19 +86,43 @@ def main():
             # Display results
             print(f"\n[{time.localtime()[3]:02d}:{time.localtime()[4]:02d}:{time.localtime()[5]:02d}] Victron Data:")
             if data['battery_voltage'] is not None:
-                print(f"  Battery Voltage: {data['battery_voltage']:.2f} V")
+                print(f"  Battery Voltage: {data['battery_voltage']:.1f} V")
             if data['battery_current'] is not None:
                 current = data['battery_current']
                 direction = "Charging" if current > 0 else "Discharging"
                 print(f"  Battery Current: {abs(current):.1f} A ({direction})")
+            if data['battery_temperature'] is not None:
+                print(f"  Battery Temp:    {data['battery_temperature']:.1f} °C")
             if data['battery_soc'] is not None:
                 print(f"  Battery SOC:     {data['battery_soc']}%")
-                # Send to display via UART
-                if uart_mgr:
-                    if not uart_mgr.send_battery_soc(data['battery_soc']):
-                        print("  WARNING: Failed to send SOC via UART")
+            if data['charging_state'] is not None:
+                state_text = "Charging" if data['charging_state'] == 1 else "Not Charging"
+                print(f"  Charging State:  {state_text}")
             if data['solar_power'] is not None:
                 print(f"  Solar Power:     {data['solar_power']} W")
+
+            # Send to display via UART
+            if uart_mgr:
+                # Send battery SOC
+                if data['battery_soc'] is not None:
+                    if not uart_mgr.send_battery_soc(data['battery_soc']):
+                        print("  WARNING: Failed to send SOC via UART")
+
+                # Send battery system data
+                if (data['battery_voltage'] is not None and
+                    data['battery_current'] is not None and
+                    data['battery_temperature'] is not None):
+                    if not uart_mgr.send_battery_system(
+                        data['battery_voltage'],
+                        data['battery_current'],
+                        data['battery_temperature']
+                    ):
+                        print("  WARNING: Failed to send BATSYS via UART")
+
+                # Send charging state
+                if data['charging_state'] is not None:
+                    if not uart_mgr.send_charging_state(data['charging_state']):
+                        print("  WARNING: Failed to send CHARGING via UART")
 
             time.sleep(config.POLL_INTERVAL)
 

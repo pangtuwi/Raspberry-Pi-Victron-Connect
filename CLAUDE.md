@@ -152,8 +152,9 @@ screen /dev/tty.usbmodem1234 115200
 - Uses standard Modbus register addressing
 
 **Key Victron Modbus Registers** (implemented in `victron_client.py`):
-- Battery Voltage: Register 840 (0.01V units) → converted to volts
+- Battery Voltage: Register 840 (0.1V units) → converted to volts
 - Battery Current: Register 841 (0.1A units, signed) → converted to amps
+- Battery Temperature: Register 842 (0.01K units) → converted to Celsius
 - Battery SOC: Register 843 (1% units) → percentage 0-100
 - Solar Power: Register 850 (1W units) → watts
 
@@ -241,13 +242,23 @@ victron = VictronClient()
 victron.connect()
 
 # Read individual values
-voltage = victron.read_battery_voltage()  # Returns float (volts)
-current = victron.read_battery_current()  # Returns float (amps, signed)
-soc = victron.read_battery_soc()          # Returns int (0-100%)
-power = victron.read_solar_power()        # Returns int (watts)
+voltage = victron.read_battery_voltage()      # Returns float (volts)
+current = victron.read_battery_current()      # Returns float (amps, signed)
+temperature = victron.read_battery_temperature()  # Returns float (Celsius)
+soc = victron.read_battery_soc()              # Returns int (0-100%)
+power = victron.read_solar_power()            # Returns int (watts)
+charging = victron.get_charging_state()       # Returns 1 (charging) or 0 (not charging)
 
 # Read all data at once
-data = victron.read_all_data()  # Returns dict with all values
+data = victron.read_all_data()  # Returns dict with all values:
+# {
+#   'battery_voltage': float,
+#   'battery_current': float,
+#   'battery_temperature': float,
+#   'battery_soc': int,
+#   'solar_power': int,
+#   'charging_state': int (0 or 1)
+# }
 
 # Low-level access
 values = victron.read_input_register(840, count=1)  # Read register directly
@@ -263,7 +274,7 @@ To read additional Victron data:
 
 ## UART Communication
 
-The project includes UART support for sending battery SOC data to an external display (e.g., Waveshare RP2350B).
+The project includes UART support for sending battery data to an external display (e.g., Waveshare RP2350B). Three types of messages are transmitted: battery SOC, battery system data (voltage/current/temperature), and charging state.
 
 ### UART Manager API
 
@@ -283,6 +294,12 @@ uart_mgr = UARTManager(
 # Send battery SOC (0-100)
 success = uart_mgr.send_battery_soc(85)  # Returns True/False
 
+# Send battery system data (voltage, current, temperature)
+success = uart_mgr.send_battery_system(48.5, 12.3, 25.5)  # Returns True/False
+
+# Send charging state (0=not charging, 1=charging)
+success = uart_mgr.send_charging_state(1)  # Returns True/False
+
 # Get transmission statistics
 stats = uart_mgr.get_stats()
 # Returns: {'send_count': N, 'error_count': N, 'error_rate': 0.0}
@@ -293,12 +310,24 @@ uart_mgr.close()
 
 ### UART Protocol
 
-**Message Format**: `BATTERY:<soc>\n`
+The system transmits three types of messages via UART:
 
-Examples:
-- `BATTERY:85\n` - Battery at 85%
-- `BATTERY:0\n` - Battery empty
-- `BATTERY:100\n` - Battery full
+**1. Battery State of Charge**
+- Format: `BATTERY:<soc>\n`
+- `soc`: State of Charge (0-100)
+- Example: `BATTERY:75\n`
+
+**2. Battery System Data**
+- Format: `BATSYS:<voltage>,<current>,<temp>\n`
+- `voltage`: Battery voltage in volts (e.g., 48.5)
+- `current`: Current in amps (positive=charging, negative=discharging)
+- `temp`: Battery temperature in °C
+- Example: `BATSYS:48.5,12.3,25.5\n`
+
+**3. Charging State**
+- Format: `CHARGING:<state>\n`
+- `state`: 0=not charging, 1=charging
+- Example: `CHARGING:1\n`
 
 **Specifications**:
 - Baud Rate: 115200
@@ -307,6 +336,7 @@ Examples:
 - Line Terminator: `\n` (line feed)
 - Direction: One-way (Pico W TX → Display RX)
 - Update Frequency: Every 5 seconds (matches Modbus poll interval)
+- All three messages sent sequentially each poll cycle
 
 ### Hardware Connection
 

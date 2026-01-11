@@ -82,23 +82,38 @@ Once deployed and configured, the Pico W will:
 1. Connect to the Cerbo GX WiFi hotspot
 2. Establish Modbus TCP connection
 3. Poll data every 5 seconds (configurable)
-4. Display: Battery voltage, current, SOC, and solar power
-5. Send Battery SOC via UART to external display (if enabled)
+4. Display: Battery voltage, current, temperature, SOC, charging state, and solar power
+5. Send battery data via UART to external display (if enabled)
 
 Monitor output via serial connection (115200 baud).
 
 ### UART Display Output
 
-The Pico W can send battery SOC data to an external display via UART:
+The Pico W can send battery data to an external display via UART. Three message types are transmitted each poll cycle:
 
 **Hardware Connection:**
 - Pico W GP0 (Pin 1) → Display RX
 - Pico W GND (Pin 3) → Display GND
 
 **Protocol:**
-- Format: `BATTERY:<soc>\n` (e.g., `BATTERY:85\n`)
+
+1. **Battery State of Charge**
+   - Format: `BATTERY:<soc>\n`
+   - Example: `BATTERY:75\n`
+
+2. **Battery System Data**
+   - Format: `BATSYS:<voltage>,<current>,<temp>\n`
+   - Example: `BATSYS:48.5,12.3,25.5\n`
+   - voltage: Volts, current: Amps (+ charging, - discharging), temp: Celsius
+
+3. **Charging State**
+   - Format: `CHARGING:<state>\n`
+   - Example: `CHARGING:1\n` (0=not charging, 1=charging)
+
+**Specifications:**
 - Baud Rate: 115200
 - Update Frequency: Every 5 seconds
+- All three messages sent sequentially
 
 **Configuration:**
 - Enable/disable in `config.py`: `UART_ENABLED = True`
@@ -112,8 +127,10 @@ See `battery_monitor.py` and `DISPLAY_INTEGRATION.md` for display-side implement
 The application reads the following Victron registers:
 - **Battery Voltage** (V): Current battery voltage
 - **Battery Current** (A): Charging (+) or discharging (-) current
+- **Battery Temperature** (°C): Battery temperature
 - **Battery SOC** (%): State of charge (0-100%)
 - **Solar Power** (W): Current solar panel production
+- **Charging State**: Derived from current (0=not charging, 1=charging)
 
 ## Development
 
