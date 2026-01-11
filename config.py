@@ -34,3 +34,7 @@ UART_BAUDRATE = 115200       # Must match display setting
 UART_TX_PIN = 0              # GP0 (Pin 1)
 UART_RX_PIN = 1              # GP1 (Pin 2) - unused but required
 UART_DEBUG = False           # Print UART messages to console
+
+# Demo mode settings
+DEMO_PIN = 2                 # GP2 - connect to GND to activate demo mode
+DEMO_PIN_PULL = 1            # 1=pull-up (normal high, grounded low)

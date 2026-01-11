@@ -382,6 +382,108 @@ The display module provides:
 - SOC clamped to 0-100 range
 - Invalid values rejected with error log
 
+## Demo Mode
+
+The project includes a hardware-triggered demo mode for testing without Victron hardware.
+
+### Activating Demo Mode
+
+**Hardware Setup:**
+1. Connect GPIO2 (GP2, Pin 4) to GND (Pin 3 or Pin 8) using a jumper wire
+2. Power cycle the Pico W (demo mode only checked at startup)
+3. Remove jumper and restart to return to normal mode
+
+**Pin Locations:**
+- GP2: Pin 4 (GPIO 2)
+- GND: Pin 3 or Pin 8 (Ground)
+
+### Demo Mode Behavior
+
+When demo mode is active:
+- **WiFi completely skipped** - faster startup, no network required
+- **Simulated Victron data** - realistic changing values
+- **UART works normally** - can test display integration
+- **Clear visual indication** - "DEMO MODE" banner in console output
+
+### Demo Data Characteristics
+
+All values use mathematical functions for realistic cycling:
+
+- **Battery Voltage**: 48-52V oscillating (60-second sine wave cycle)
+- **Battery Current**: Alternates charging (+10 to +25A) / discharging (-5 to -15A) every 60 seconds (120-second total cycle)
+- **Battery SOC**: Slowly drifts 20-95% (300-second cycle)
+- **Battery Temperature**: Varies 25-30°C (180-second cycle)
+- **Solar Power**: 0-800W following day/night pattern (600-second cycle with 60% "daylight")
+- **Charging State**: Derived from current (matches charge/discharge cycle)
+
+### Demo Mode Implementation
+
+The `DemoVictronClient` class (`demo_victron_client.py`) provides:
+- Identical interface to `VictronClient` - drop-in replacement
+- Zero memory overhead - uses time-based calculations only
+- All methods return realistic simulated data
+- Compatible with all existing UART and display code
+
+**Detection Logic:**
+```python
+# GP2 configured with pull-up resistor
+# Low (0) when grounded = demo mode
+# High (1) when floating = normal mode
+demo_pin = Pin(2, Pin.IN, Pin.PULL_UP)
+is_demo = demo_pin.value() == 0
+```
+
+### Testing Demo Mode
+
+```bash
+# 1. Add jumper: GP2 (Pin 4) to GND (Pin 3 or Pin 8)
+# 2. Reset Pico W
+# 3. Expected output:
+```
+
+```
+==============================================================
+                    *** DEMO MODE ***
+     GP2 pin detected grounded - using simulated data
+     WiFi disabled | All data is generated locally
+==============================================================
+
+[WiFi] Skipped - demo mode enabled
+
+[1/2] Initializing demo Victron client...
+DEMO MODE: Simulated connection to Victron Cerbo GX
+
+[2/2] Initializing UART on GP0 (TX)
+UART0 initialized: TX=GP0, RX=GP1, 115200 baud
+
+Starting data polling (DEMO MODE)
+Press Ctrl+C to stop
+
+------------------------------------------------------------
+
+[DEMO] [14:23:45] Victron Data:
+  Battery Voltage: 51.2 V
+  Battery Current: 18.5 A (Charging)
+  Battery Temp:    28.3 °C
+  Battery SOC:     67%
+  Charging State:  Charging
+  Solar Power:     425 W
+```
+
+### Configuration
+
+Edit `config.py` to customize demo mode:
+- `DEMO_PIN`: GPIO pin number for demo detection (default: 2)
+- `DEMO_PIN_PULL`: Pull resistor direction (default: 1 = pull-up)
+
+### Use Cases
+
+- **Display development**: Test display code without Victron hardware
+- **UART protocol testing**: Verify UART communication and parsing
+- **Algorithm development**: Test data processing logic
+- **Demonstrations**: Show system behavior without full setup
+- **Travel development**: Work on code without Cerbo GX access
+
 ## Important Notes
 
 - **Modbus TCP must be enabled** on the Cerbo GX: Settings → Services → Modbus TCP

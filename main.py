@@ -6,47 +6,90 @@ Reads data from Victron Cerbo GX and processes it
 import time
 import sys
 import config
+from machine import Pin
 from wifi_manager import WiFiManager
-from victron_client import VictronClient
 from uart_manager import UARTManager
+
+def detect_demo_mode():
+    """
+    Detect demo mode by checking if GP2 is grounded
+
+    Returns:
+        True if demo mode enabled, False otherwise
+    """
+    # Configure GP2 as input with pull-up
+    demo_pin = Pin(config.DEMO_PIN, Pin.IN, Pin.PULL_UP)
+
+    # Read pin state (0 = grounded/demo mode, 1 = normal mode)
+    is_demo = demo_pin.value() == 0
+
+    if is_demo:
+        print("=" * 60)
+        print("                    *** DEMO MODE ***")
+        print("     GP2 pin detected grounded - using simulated data")
+        print("     WiFi disabled | All data is generated locally")
+        print("=" * 60)
+
+    return is_demo
 
 def main():
     """Main application loop"""
-    print("=" * 50)
-    print("Victron Cerbo GX Reader")
-    print("=" * 50)
+    # Detect demo mode first
+    demo_mode = detect_demo_mode()
 
-    # Initialize WiFi
-    wifi = WiFiManager()
+    if not demo_mode:
+        print("=" * 50)
+        print("Victron Cerbo GX Reader")
+        print("=" * 50)
+    else:
+        print("")  # Extra spacing after demo banner
 
-    # Disconnect from any existing WiFi connection first
-    wifi.disconnect()
+    # Initialize WiFi (skip in demo mode)
+    wifi = None
+    if not demo_mode:
+        wifi = WiFiManager()
 
-    # Connect to Cerbo GX hotspot
-    print("\n[1/2] Connecting to Cerbo GX WiFi hotspot...")
-    if not wifi.connect(timeout=config.WIFI_TIMEOUT):
-        print("ERROR: Failed to connect to WiFi")
-        print("Please check:")
-        print(f"  - SSID: {config.WIFI_SSID}")
-        print("  - Password is correct")
-        print("  - Cerbo GX hotspot is enabled")
-        return
+        # Disconnect from any existing WiFi connection first
+        wifi.disconnect()
 
-    # Initialize Modbus connection to Cerbo GX
-    print(f"\n[2/2] Connecting to Cerbo GX at {config.CERBO_IP}:{config.CERBO_PORT}")
-    victron = VictronClient()
+        # Connect to Cerbo GX hotspot
+        print("\n[1/2] Connecting to Cerbo GX WiFi hotspot...")
+        if not wifi.connect(timeout=config.WIFI_TIMEOUT):
+            print("ERROR: Failed to connect to WiFi")
+            print("Please check:")
+            print(f"  - SSID: {config.WIFI_SSID}")
+            print("  - Password is correct")
+            print("  - Cerbo GX hotspot is enabled")
+            return
+    else:
+        print("[WiFi] Skipped - demo mode enabled\n")
+
+    # Initialize Victron client (real or demo)
+    if demo_mode:
+        from demo_victron_client import DemoVictronClient
+        step_label = "[1/2]"
+        print(f"{step_label} Initializing demo Victron client...")
+        victron = DemoVictronClient()
+    else:
+        from victron_client import VictronClient
+        step_label = "[2/2]"
+        print(f"\n{step_label} Connecting to Cerbo GX at {config.CERBO_IP}:{config.CERBO_PORT}")
+        victron = VictronClient()
+
     if not victron.connect():
         print("ERROR: Failed to connect to Cerbo GX via Modbus TCP")
         print("Please check:")
         print("  - Modbus TCP is enabled on Cerbo GX")
         print("  - Cerbo GX is accessible at", config.CERBO_IP)
-        wifi.disconnect()
+        if wifi:
+            wifi.disconnect()
         return
 
     # Initialize UART for display communication
     uart_mgr = None
     if config.UART_ENABLED:
-        print(f"\n[3/3] Initializing UART on GP{config.UART_TX_PIN} (TX)")
+        step_label = "[2/2]" if demo_mode else "[3/3]"
+        print(f"\n{step_label} Initializing UART on GP{config.UART_TX_PIN} (TX)")
         try:
             uart_mgr = UARTManager(
                 uart_id=config.UART_ID,
@@ -61,30 +104,33 @@ def main():
             uart_mgr = None
 
     # Main polling loop
-    print(f"\nStarting data polling (interval: {config.POLL_INTERVAL}s)")
+    mode_text = "DEMO MODE" if demo_mode else f"interval: {config.POLL_INTERVAL}s"
+    print(f"\nStarting data polling ({mode_text})")
     print("Press Ctrl+C to stop\n")
     print("-" * 60)
 
     while True:
         try:
-            # Check WiFi connection
-            if not wifi.is_connected():
-                print("WiFi disconnected! Reconnecting...")
-                if not wifi.connect(timeout=config.WIFI_TIMEOUT):
-                    print("Failed to reconnect. Retrying in 10s...")
-                    time.sleep(10)
-                    continue
-                # Reconnect to Modbus after WiFi reconnection
-                if not victron.connect():
-                    print("Failed to reconnect to Cerbo GX. Retrying in 10s...")
-                    time.sleep(10)
-                    continue
+            # Check WiFi connection (skip in demo mode)
+            if not demo_mode:
+                if not wifi.is_connected():
+                    print("WiFi disconnected! Reconnecting...")
+                    if not wifi.connect(timeout=config.WIFI_TIMEOUT):
+                        print("Failed to reconnect. Retrying in 10s...")
+                        time.sleep(10)
+                        continue
+                    # Reconnect to Modbus after WiFi reconnection
+                    if not victron.connect():
+                        print("Failed to reconnect to Cerbo GX. Retrying in 10s...")
+                        time.sleep(10)
+                        continue
 
             # Read all Victron data
             data = victron.read_all_data()
 
             # Display results
-            print(f"\n[{time.localtime()[3]:02d}:{time.localtime()[4]:02d}:{time.localtime()[5]:02d}] Victron Data:")
+            mode_indicator = "[DEMO] " if demo_mode else ""
+            print(f"\n{mode_indicator}[{time.localtime()[3]:02d}:{time.localtime()[4]:02d}:{time.localtime()[5]:02d}] Victron Data:")
             if data['battery_voltage'] is not None:
                 print(f"  Battery Voltage: {data['battery_voltage']:.1f} V")
             if data['battery_current'] is not None:
@@ -131,7 +177,8 @@ def main():
             victron.close()
             if uart_mgr:
                 uart_mgr.close()
-            wifi.disconnect()
+            if wifi:
+                wifi.disconnect()
             break
         except Exception as e:
             print(f"Error: {e}")

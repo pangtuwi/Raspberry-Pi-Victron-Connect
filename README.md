@@ -132,6 +132,37 @@ The application reads the following Victron registers:
 - **Solar Power** (W): Current solar panel production
 - **Charging State**: Derived from current (0=not charging, 1=charging)
 
+## Demo Mode
+
+Test the system without Victron hardware using demo mode.
+
+### Quick Start
+
+1. **Connect jumper**: GP2 (Pin 4) to GND (Pin 3 or Pin 8)
+2. **Reset Pico W**: Power cycle or press reset button
+3. **Observe output**: "DEMO MODE" banner appears, realistic data generated
+4. **Remove jumper and reset**: Returns to normal operation
+
+### What Demo Mode Does
+
+- Skips WiFi connection entirely (faster startup)
+- Generates realistic changing battery/solar data
+- Works with UART display output
+- Clearly labeled in console output
+
+### Demo Data Pattern
+
+Values cycle realistically over time:
+- Voltage oscillates 48-52V
+- Current alternates between charging and discharging
+- SOC slowly varies 20-95%
+- Temperature varies 25-30°C
+- Solar power follows day/night cycle (0-800W)
+
+Perfect for testing display integration, UART protocol, or developing new features without hardware.
+
+See `CLAUDE.md` for technical details.
+
 ## Development
 
 See `CLAUDE.md` for detailed development instructions, architecture, and API reference.
