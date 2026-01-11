@@ -82,7 +82,7 @@ Once deployed and configured, the Pico W will:
 1. Connect to the Cerbo GX WiFi hotspot
 2. Establish Modbus TCP connection
 3. Poll data every 5 seconds (configurable)
-4. Display: Battery voltage, current, temperature, SOC, charging state, and solar power
+4. Display: Battery voltage, current, temperature, SOC, and charging state
 5. Send battery data via UART to external display (if enabled)
 
 Monitor output via serial connection (115200 baud).
@@ -138,8 +138,9 @@ The application reads the following Victron registers:
 - **Battery Current** (A): Charging (+) or discharging (-) current
 - **Battery Temperature** (°C): Battery temperature
 - **Battery SOC** (%): State of charge (0-100%)
-- **Solar Power** (W): Current solar panel production
 - **Charging State**: Derived from current (0=not charging, 1=charging)
+
+**Note:** Power (W) can be calculated from voltage and current: P = V × I
 
 ## Demo Mode
 
@@ -155,7 +156,7 @@ Test the system without Victron hardware using demo mode.
 ### What Demo Mode Does
 
 - Skips WiFi connection entirely (faster startup)
-- Generates realistic changing battery/solar data
+- Generates realistic changing battery data
 - Works with UART display output
 - Clearly labeled in console output
 
@@ -166,7 +167,6 @@ Values cycle realistically over time:
 - Current alternates between charging and discharging
 - SOC slowly varies 20-95%
 - Temperature varies 25-30°C
-- Solar power follows day/night cycle (0-800W)
 
 Perfect for testing display integration, UART protocol, or developing new features without hardware.
 

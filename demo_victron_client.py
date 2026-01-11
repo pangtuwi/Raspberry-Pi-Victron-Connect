@@ -114,28 +114,6 @@ class DemoVictronClient:
         soc = int(max(20, min(95, soc_base)))
         return soc
 
-    def read_solar_power(self):
-        """
-        Simulate solar power: 0-800W following day/night cycle
-
-        Returns:
-            Power in watts (int) or None if not connected
-        """
-        if not self.connected:
-            return None
-
-        elapsed = self._get_elapsed_seconds()
-        # 600-second "day" cycle (10 minutes)
-        solar_cycle = (elapsed % 600) / 600.0
-
-        if 0.2 < solar_cycle < 0.8:  # "Daylight" 60% of cycle
-            # Sine wave pattern during daylight hours
-            solar = int(800 * math.sin((solar_cycle - 0.2) * math.pi / 0.6))
-        else:  # "Night"
-            solar = 0
-
-        return solar
-
     def get_charging_state(self, current=None):
         """
         Determine charging state from current
@@ -169,7 +147,6 @@ class DemoVictronClient:
             'battery_current': battery_current,
             'battery_temperature': self.read_battery_temperature(),
             'battery_soc': self.read_battery_soc(),
-            'solar_power': self.read_solar_power(),
             'charging_state': self.get_charging_state(battery_current),
         }
         return data

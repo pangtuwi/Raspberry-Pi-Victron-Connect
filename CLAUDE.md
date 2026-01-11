@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Raspberry Pi Pico - Victron Cerbo GX Interface**: MicroPython application that connects to a Victron Cerbo GX energy management system to read solar/battery data.
+**Raspberry Pi Pico - Victron Cerbo GX Interface**: MicroPython application that connects to a Victron Cerbo GX energy management system to read battery data.
 
 **Hardware Target**: Raspberry Pi Pico W (WiFi required)
 
@@ -156,7 +156,6 @@ screen /dev/tty.usbmodem1234 115200
 - Battery Current: Register 841 (0.1A units, signed) → converted to amps
 - Battery Temperature: Register 842 (0.01K units) → converted to Celsius
 - Battery SOC: Register 843 (1% units) → percentage 0-100
-- Solar Power: Register 850 (1W units) → watts
 
 **Important Notes**:
 - Most registers use input registers (function code 4), not holding registers
@@ -201,7 +200,7 @@ The `wifi_manager.py` module handles:
 - **Blocking operations**: Modbus TCP operations are blocking. The current implementation uses simple polling with timeouts.
 - **Time synchronization**: Pico has no RTC battery; time resets on power loss. Timestamps show local time since boot.
 - **Exception handling**: All network operations are wrapped in try/except for resilience
-- **Unit IDs**: Victron devices use different Modbus unit IDs (100=System, 225=Battery, 226=Solar, 227=Inverter)
+- **Unit IDs**: Victron devices use different Modbus unit IDs (100=System, 225=Battery, 227=Inverter)
 
 ## Configuration
 
@@ -246,7 +245,6 @@ voltage = victron.read_battery_voltage()      # Returns float (volts)
 current = victron.read_battery_current()      # Returns float (amps, signed)
 temperature = victron.read_battery_temperature()  # Returns float (Celsius)
 soc = victron.read_battery_soc()              # Returns int (0-100%)
-power = victron.read_solar_power()            # Returns int (watts)
 charging = victron.get_charging_state()       # Returns 1 (charging) or 0 (not charging)
 
 # Read all data at once
@@ -256,7 +254,6 @@ data = victron.read_all_data()  # Returns dict with all values:
 #   'battery_current': float,
 #   'battery_temperature': float,
 #   'battery_soc': int,
-#   'solar_power': int,
 #   'charging_state': int (0 or 1)
 # }
 
@@ -440,7 +437,6 @@ All values use mathematical functions for realistic cycling:
 - **Battery Current**: Alternates charging (+10 to +25A) / discharging (-5 to -15A) every 60 seconds (120-second total cycle)
 - **Battery SOC**: Slowly drifts 20-95% (300-second cycle)
 - **Battery Temperature**: Varies 25-30°C (180-second cycle)
-- **Solar Power**: 0-800W following day/night pattern (600-second cycle with 60% "daylight")
 - **Charging State**: Derived from current (matches charge/discharge cycle)
 
 ### Demo Mode Implementation
@@ -494,7 +490,6 @@ Press Ctrl+C to stop
   Battery Temp:    28.3 °C
   Battery SOC:     67%
   Charging State:  Charging
-  Solar Power:     425 W
 ```
 
 ### Configuration

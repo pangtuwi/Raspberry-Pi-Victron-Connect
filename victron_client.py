@@ -153,19 +153,6 @@ class VictronClient:
             return round(celsius, 1)
         return None
 
-    def read_solar_power(self):
-        """
-        Read solar power (register 850)
-
-        Returns:
-            Power in watts (int) or None on error
-        """
-        result = self.read_input_register(850)
-        if result:
-            # Power in 1W units
-            return result[0]
-        return None
-
     def get_charging_state(self, current=None):
         """
         Determine if battery is charging based on current
@@ -199,7 +186,6 @@ class VictronClient:
             'battery_current': battery_current,
             'battery_temperature': self.read_battery_temperature(),
             'battery_soc': self.read_battery_soc(),
-            'solar_power': self.read_solar_power(),
             'charging_state': self.get_charging_state(battery_current),
         }
         return data

@@ -148,8 +148,6 @@ def main():
             if data['charging_state'] is not None:
                 state_text = "Charging" if data['charging_state'] == 1 else "Not Charging"
                 print(f"  Charging State:  {state_text}")
-            if data['solar_power'] is not None:
-                print(f"  Solar Power:     {data['solar_power']} W")
 
             # Send one UART message per cycle (cycling through 5 messages)
             if uart_mgr:
