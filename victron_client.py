@@ -140,11 +140,13 @@ class VictronClient:
     def read_battery_temperature(self):
         """
         Read battery temperature (register 842)
+        Alternatives : register 61 (com.victron.vebus)
+                       register 262 (com.victronenergy.battery)
 
         Returns:
             Temperature in Celsius (float) or None on error
         """
-        result = self.read_input_register(842)
+        result = self.read_input_register(61)
         if result:
             # Victron stores temperature in 0.01 Kelvin units
             # Convert to Celsius: (K * 0.01) - 273.15
